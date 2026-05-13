@@ -1,0 +1,398 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/0.1.2-preview/CreateUIDefinition.MultiVm.json#",
+  "handler": "Microsoft.Azure.CreateUIDef",
+  "version": "0.1.2-preview",
+  "parameters": {
+    "basics": [
+      {
+        "name": "webAppName",
+        "type": "Microsoft.Common.TextBox",
+        "label": "Web App name",
+        "defaultValue": "",
+        "placeholder": "Enter web app name",
+        "constraints": {
+          "required": true,
+          "regex": "^[a-zA-Z0-9-]{2,60}$",
+          "validationMessage": "Use only letters, numbers, and hyphens."
+        }
+      },
+      {
+        "name": "publishOption",
+        "type": "Microsoft.Common.OptionsGroup",
+        "label": "Publish",
+        "defaultValue": "Code",
+        "constraints": {
+          "allowedValues": [
+            {
+              "label": "Code",
+              "value": "Code"
+            },
+            {
+              "label": "Container",
+              "value": "Container"
+            }
+          ],
+          "required": true
+        }
+      },
+      {
+        "name": "runtimeStack",
+        "type": "Microsoft.Common.DropDown",
+        "label": "Runtime stack",
+        "defaultValue": "DOTNET|8.0",
+        "constraints": {
+          "allowedValues": [
+            {
+              "label": ".NET 8",
+              "value": "DOTNET|8.0"
+            },
+            {
+              "label": "Node 20",
+              "value": "NODE|20-lts"
+            },
+            {
+              "label": "Python 3.11",
+              "value": "PYTHON|3.11"
+            },
+            {
+              "label": "Java 17",
+              "value": "JAVA|17-java17"
+            }
+          ],
+          "required": true
+        }
+      },
+      {
+        "name": "operatingSystem",
+        "type": "Microsoft.Common.OptionsGroup",
+        "label": "Operating System",
+        "defaultValue": "Linux",
+        "constraints": {
+          "allowedValues": [
+            {
+              "label": "Linux",
+              "value": "Linux"
+            },
+            {
+              "label": "Windows",
+              "value": "Windows"
+            }
+          ],
+          "required": true
+        }
+      },
+      {
+        "name": "region",
+        "type": "Microsoft.Common.DropDown",
+        "label": "Region",
+        "defaultValue": "eastus",
+        "constraints": {
+          "allowedValues": [
+            {
+              "label": "East US",
+              "value": "eastus"
+            },
+            {
+              "label": "West Europe",
+              "value": "westeurope"
+            },
+            {
+              "label": "Canada Central",
+              "value": "canadacentral"
+            }
+          ],
+          "required": true
+        }
+      },
+      {
+        "name": "appServicePlanName",
+        "type": "Microsoft.Common.TextBox",
+        "label": "App Service Plan Name",
+        "defaultValue": "",
+        "placeholder": "Enter App Service Plan name",
+        "constraints": {
+          "required": true
+        }
+      },
+      {
+        "name": "pricingPlan",
+        "type": "Microsoft.Common.DropDown",
+        "label": "Pricing Plan",
+        "defaultValue": "B1",
+        "constraints": {
+          "allowedValues": [
+            {
+              "label": "Basic B1",
+              "value": "B1"
+            },
+            {
+              "label": "Standard S1",
+              "value": "S1"
+            },
+            {
+              "label": "Premium P1V3",
+              "value": "P1V3"
+            }
+          ],
+          "required": true
+        }
+      }
+    ],
+    "steps": [
+      {
+        "name": "databaseSettings",
+        "label": "Database",
+        "elements": [
+          {
+            "name": "databaseIntro",
+            "type": "Microsoft.Common.TextBlock",
+            "defaultValue": "Once database is enabled, a new VNet and related networking resources will be created automatically."
+          },
+          {
+            "name": "databaseWarning",
+            "type": "Microsoft.Common.TextBlock",
+            "defaultValue": "Select a resource group before attempting to configure a database."
+          },
+          {
+            "name": "createDatabase",
+            "type": "Microsoft.Common.CheckBox",
+            "label": "Create a Database",
+            "defaultValue": false
+          },
+          {
+            "name": "databaseType",
+            "type": "Microsoft.Common.DropDown",
+            "label": "Database Type",
+            "visible": "[steps('databaseSettings').createDatabase]",
+            "defaultValue": "AzureSQL",
+            "constraints": {
+              "allowedValues": [
+                {
+                  "label": "Azure SQL",
+                  "value": "AzureSQL"
+                },
+                {
+                  "label": "MySQL",
+                  "value": "MySQL"
+                },
+                {
+                  "label": "PostgreSQL",
+                  "value": "PostgreSQL"
+                }
+              ],
+              "required": false
+            }
+          },
+          {
+            "name": "databaseServerName",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Database Server Name",
+            "visible": "[steps('databaseSettings').createDatabase]",
+            "defaultValue": "",
+            "placeholder": "Enter database server name"
+          },
+          {
+            "name": "databaseName",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Database Name",
+            "visible": "[steps('databaseSettings').createDatabase]",
+            "defaultValue": "",
+            "placeholder": "Enter database name"
+          }
+        ]
+      },
+      {
+        "name": "deploymentSettings",
+        "label": "Deployment",
+        "elements": [
+          {
+            "name": "continuousDeployment",
+            "type": "Microsoft.Common.OptionsGroup",
+            "label": "Continuous deployment",
+            "defaultValue": "Disable",
+            "constraints": {
+              "allowedValues": [
+                {
+                  "label": "Disable",
+                  "value": "Disable"
+                },
+                {
+                  "label": "Enable",
+                  "value": "Enable"
+                }
+              ],
+              "required": true
+            }
+          },
+          {
+            "name": "githubAccount",
+            "type": "Microsoft.Common.TextBox",
+            "label": "GitHub account",
+            "visible": "[equals(steps('deploymentSettings').continuousDeployment, 'Enable')]",
+            "defaultValue": ""
+          },
+          {
+            "name": "organization",
+            "type": "Microsoft.Common.DropDown",
+            "label": "Organization",
+            "visible": "[equals(steps('deploymentSettings').continuousDeployment, 'Enable')]",
+            "defaultValue": "",
+            "constraints": {
+              "allowedValues": [
+                {
+                  "label": "Select organization",
+                  "value": ""
+                }
+              ]
+            }
+          },
+          {
+            "name": "repository",
+            "type": "Microsoft.Common.DropDown",
+            "label": "Repository",
+            "visible": "[equals(steps('deploymentSettings').continuousDeployment, 'Enable')]",
+            "defaultValue": "",
+            "constraints": {
+              "allowedValues": [
+                {
+                  "label": "Select repository",
+                  "value": ""
+                }
+              ]
+            }
+          },
+          {
+            "name": "branch",
+            "type": "Microsoft.Common.DropDown",
+            "label": "Branch",
+            "visible": "[equals(steps('deploymentSettings').continuousDeployment, 'Enable')]",
+            "defaultValue": "",
+            "constraints": {
+              "allowedValues": [
+                {
+                  "label": "Select branch",
+                  "value": ""
+                }
+              ]
+            }
+          },
+          {
+            "name": "basicAuthentication",
+            "type": "Microsoft.Common.OptionsGroup",
+            "label": "Basic authentication",
+            "visible": "[equals(steps('deploymentSettings').continuousDeployment, 'Enable')]",
+            "defaultValue": "Disable",
+            "constraints": {
+              "allowedValues": [
+                {
+                  "label": "Disable",
+                  "value": "Disable"
+                },
+                {
+                  "label": "Enable",
+                  "value": "Enable"
+                }
+              ],
+              "required": false
+            }
+          }
+        ]
+      },
+      {
+        "name": "networkingSettings",
+        "label": "Networking",
+        "elements": [
+          {
+            "name": "enableVnetIntegration",
+            "type": "Microsoft.Common.CheckBox",
+            "label": "Enable VNet Integration",
+            "defaultValue": false
+          },
+          {
+            "name": "vnetName",
+            "type": "Microsoft.Common.TextBox",
+            "visible": "[steps('networkingSettings').enableVnetIntegration]",
+            "label": "Virtual Network Name",
+            "defaultValue": ""
+          },
+          {
+            "name": "subnetName",
+            "type": "Microsoft.Common.TextBox",
+            "visible": "[steps('networkingSettings').enableVnetIntegration]",
+            "label": "Subnet Name",
+            "defaultValue": ""
+          }
+        ]
+      },
+      {
+        "name": "monitoringSettings",
+        "label": "Monitor + secure",
+        "elements": [
+          {
+            "name": "enableApplicationInsights",
+            "type": "Microsoft.Common.CheckBox",
+            "label": "Enable Application Insights",
+            "defaultValue": true
+          },
+          {
+            "name": "enableDiagnosticLogs",
+            "type": "Microsoft.Common.CheckBox",
+            "label": "Enable Diagnostic Logs",
+            "defaultValue": true
+          },
+          {
+            "name": "httpsOnly",
+            "type": "Microsoft.Common.CheckBox",
+            "label": "HTTPS Only",
+            "defaultValue": true
+          }
+        ]
+      },
+      {
+        "name": "tagsSettings",
+        "label": "Tags",
+        "elements": [
+          {
+            "name": "environmentTag",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Environment",
+            "defaultValue": "Dev"
+          },
+          {
+            "name": "ownerTag",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Owner",
+            "defaultValue": ""
+          }
+        ]
+      }
+    ],
+    "outputs": {
+      "webAppName": "[basics('webAppName')]",
+      "publishOption": "[basics('publishOption')]",
+      "runtimeStack": "[basics('runtimeStack')]",
+      "operatingSystem": "[basics('operatingSystem')]",
+      "location": "[basics('region')]",
+      "appServicePlanName": "[basics('appServicePlanName')]",
+      "pricingPlan": "[basics('pricingPlan')]",
+      "createDatabase": "[steps('databaseSettings').createDatabase]",
+      "databaseType": "[steps('databaseSettings').databaseType]",
+      "databaseServerName": "[steps('databaseSettings').databaseServerName]",
+      "databaseName": "[steps('databaseSettings').databaseName]",
+      "continuousDeployment": "[steps('deploymentSettings').continuousDeployment]",
+      "githubAccount": "[steps('deploymentSettings').githubAccount]",
+      "organization": "[steps('deploymentSettings').organization]",
+      "repository": "[steps('deploymentSettings').repository]",
+      "branch": "[steps('deploymentSettings').branch]",
+      "basicAuthentication": "[steps('deploymentSettings').basicAuthentication]",
+      "enableVnetIntegration": "[steps('networkingSettings').enableVnetIntegration]",
+      "vnetName": "[steps('networkingSettings').vnetName]",
+      "subnetName": "[steps('networkingSettings').subnetName]",
+      "enableApplicationInsights": "[steps('monitoringSettings').enableApplicationInsights]",
+      "enableDiagnosticLogs": "[steps('monitoringSettings').enableDiagnosticLogs]",
+      "httpsOnly": "[steps('monitoringSettings').httpsOnly]",
+      "environmentTag": "[steps('tagsSettings').environmentTag]",
+      "ownerTag": "[steps('tagsSettings').ownerTag]"
+    }
+  }
+}

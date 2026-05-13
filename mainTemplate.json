@@ -1,0 +1,230 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "webAppName": {
+      "type": "string"
+    },
+    "publishOption": {
+      "type": "string"
+    },
+    "runtimeStack": {
+      "type": "string"
+    },
+    "operatingSystem": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "appServicePlanName": {
+      "type": "string"
+    },
+    "pricingPlan": {
+      "type": "string"
+    },
+    "createDatabase": {
+      "type": "bool"
+    },
+    "databaseType": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "databaseServerName": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "databaseName": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "continuousDeployment": {
+      "type": "string"
+    },
+    "githubAccount": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "organization": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "repository": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "branch": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "basicAuthentication": {
+      "type": "string",
+      "defaultValue": "Disable"
+    },
+    "enableVnetIntegration": {
+      "type": "bool"
+    },
+    "vnetName": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "subnetName": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "enableApplicationInsights": {
+      "type": "bool"
+    },
+    "enableDiagnosticLogs": {
+      "type": "bool"
+    },
+    "httpsOnly": {
+      "type": "bool"
+    },
+    "environmentTag": {
+      "type": "string"
+    },
+    "ownerTag": {
+      "type": "string"
+    }
+  },
+  "variables": {
+    "appServicePlanId": "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2022-03-01",
+      "name": "[parameters('appServicePlanName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "[parameters('pricingPlan')]",
+        "tier": "[if(equals(parameters('pricingPlan'), 'B1'), 'Basic', if(equals(parameters('pricingPlan'), 'S1'), 'Standard', 'PremiumV3'))]"
+      },
+      "kind": "[if(equals(parameters('operatingSystem'), 'Linux'), 'linux', 'windows')]",
+      "properties": {
+        "reserved": "[equals(parameters('operatingSystem'), 'Linux')]"
+      },
+      "tags": {
+        "Environment": "[parameters('environmentTag')]",
+        "Owner": "[parameters('ownerTag')]"
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2022-03-01",
+      "name": "[parameters('webAppName')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]"
+      ],
+      "kind": "[if(equals(parameters('operatingSystem'), 'Linux'), 'app,linux', 'app')]",
+      "properties": {
+        "serverFarmId": "[variables('appServicePlanId')]",
+        "httpsOnly": "[parameters('httpsOnly')]",
+        "siteConfig": {
+          "linuxFxVersion": "[if(equals(parameters('operatingSystem'), 'Linux'), parameters('runtimeStack'), json('null'))]",
+          "netFrameworkVersion": "[if(equals(parameters('operatingSystem'), 'Windows'), 'v8.0', json('null'))]"
+        }
+      },
+      "tags": {
+        "Environment": "[parameters('environmentTag')]",
+        "Owner": "[parameters('ownerTag')]"
+      }
+    },
+    {
+      "condition": "[parameters('enableApplicationInsights')]",
+      "type": "Microsoft.Insights/components",
+      "apiVersion": "2020-02-02",
+      "name": "[concat(parameters('webAppName'), '-appi')]",
+      "location": "[parameters('location')]",
+      "kind": "web",
+      "properties": {
+        "Application_Type": "web"
+      },
+      "tags": {
+        "Environment": "[parameters('environmentTag')]",
+        "Owner": "[parameters('ownerTag')]"
+      }
+    },
+    {
+      "condition": "[parameters('createDatabase')]",
+      "type": "Microsoft.Sql/servers",
+      "apiVersion": "2022-02-01-preview",
+      "name": "[parameters('databaseServerName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "administratorLogin": "sqladminuser",
+        "administratorLoginPassword": "Password@123456"
+      }
+    },
+    {
+      "condition": "[parameters('createDatabase')]",
+      "type": "Microsoft.Sql/servers/databases",
+      "apiVersion": "2022-02-01-preview",
+      "name": "[concat(parameters('databaseServerName'), '/', parameters('databaseName'))]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Sql/servers', parameters('databaseServerName'))]"
+      ],
+      "sku": {
+        "name": "Basic"
+      },
+      "properties": {}
+    },
+    {
+      "condition": "[parameters('enableVnetIntegration')]",
+      "type": "Microsoft.Network/virtualNetworks",
+      "apiVersion": "2022-05-01",
+      "name": "[parameters('vnetName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "10.0.0.0/16"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "[parameters('subnetName')]",
+            "properties": {
+              "addressPrefix": "10.0.0.0/24"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "condition": "[equals(parameters('continuousDeployment'), 'Enable')]",
+      "type": "Microsoft.Web/sites/sourcecontrols",
+      "apiVersion": "2022-03-01",
+      "name": "[concat(parameters('webAppName'), '/web')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', parameters('webAppName'))]"
+      ],
+      "properties": {
+        "repoUrl": "[concat('https://github.com/', parameters('githubAccount'), '/', parameters('repository'))]",
+        "branch": "[parameters('branch')]",
+        "isManualIntegration": true
+      }
+    }
+  ],
+  "outputs": {
+    "webAppName": {
+      "type": "string",
+      "value": "[parameters('webAppName')]"
+    },
+    "webAppUrl": {
+      "type": "string",
+      "value": "[concat('https://', parameters('webAppName'), '.azurewebsites.net')]"
+    },
+    "appServicePlan": {
+      "type": "string",
+      "value": "[parameters('appServicePlanName')]"
+    },
+    "applicationInsights": {
+      "type": "string",
+      "value": "[if(parameters('enableApplicationInsights'), concat(parameters('webAppName'), '-appi'), 'Not Enabled')]"
+    }
+  }
+}
